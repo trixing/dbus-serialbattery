@@ -16,6 +16,7 @@ import battery
 from lltjbd import LltJbd
 from daly import Daly
 from ant import Ant
+from jkbms import Jkbms
 #from mnb import MNB
 
 # Logging
@@ -42,6 +43,9 @@ def main():
             Daly(port=_port, baud=9600, address=b"\x80"),
             # MNB(port=_port, baud=9600),
         ]
+
+        if port.startswith('jkbms'):
+            return Jkbms(port=port, baud=9600)
 
         # try to establish communications with the battery 3 times, else exit
         count = 3

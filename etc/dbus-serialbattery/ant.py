@@ -44,9 +44,10 @@ class Ant(Battery):
         return result
 
     def read_status_data(self):
-        status_data = self.read_serial_data_ant(self.command_general)
+        status_data = False
         # check if connection success
         if status_data is False:
+            print('No status data')
             return False
 
         voltage = unpack_from('>H', status_data, 4)
@@ -93,17 +94,3 @@ class Ant(Battery):
         
     def get_balancing(self): 
         return 1 if self.balancing or self.balancing == 2 else 0
-
-    def read_serial_data_ant(self, command):
-        # use the read_serial_data() function to read the data and then do BMS spesific checks (crc, start bytes, etc)
-        data = read_serial_data(command, self.port, self.baud_rate,
-                                self.LENGTH_POS, self.LENGTH_CHECK, self.LENGTH_FIXED)
-        if data is False:
-            logger.info(">>> ERROR: Incorrect Data")
-            return False
-
-        if len(data) == self.LENGTH_FIXED:
-            return data
-        else:
-            logger.info(">>> ERROR: Incorrect Reply")
-            return False

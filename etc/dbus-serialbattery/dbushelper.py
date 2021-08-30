@@ -107,7 +107,7 @@ class DbusHelper:
         self._dbusservice.add_path('/Balancing', None, writeable=True)
         self._dbusservice.add_path('/Io/AllowToCharge', 0, writeable=True)
         self._dbusservice.add_path('/Io/AllowToDischarge', 0, writeable=True)
-        # self._dbusservice.add_path('/SystemSwitch',1,writeable=True)
+        self._dbusservice.add_path('/SystemSwitch',1,writeable=True)
         # Create the alarms
         self._dbusservice.add_path('/Alarms/LowVoltage', None, writeable=True)
         self._dbusservice.add_path('/Alarms/HighVoltage', None, writeable=True)
@@ -137,51 +137,58 @@ class DbusHelper:
 
     def publish_dbus(self):
         # Update SOC, DC and System items
-        self._dbusservice['/System/NrOfCellsPerBattery'] = self.battery.cell_count
-        self._dbusservice['/Soc'] = round(self.battery.soc, 2)
-        self._dbusservice['/Dc/0/Voltage'] = round(self.battery.voltage, 2)
-        self._dbusservice['/Dc/0/Current'] = round(self.battery.current, 2)
-        self._dbusservice['/Dc/0/Power'] = round(self.battery.voltage * self.battery.current, 2)
-        self._dbusservice['/Dc/0/Temperature'] = self.battery.get_temp()
-        self._dbusservice['/Capacity'] = self.battery.capacity_remain
+        def pub(path, v, rounding=False):
+            if v is not None:
+                if rounding:
+                    v = round(v, 2)
+                self._dbusservice[path] = v
 
-        # Update battery extras
-        self._dbusservice['/History/ChargeCycles'] = self.battery.cycles
-        self._dbusservice['/History/TotalAhDrawn'] = self.battery.total_ah_drawn
-        self._dbusservice['/Io/AllowToCharge'] = 1 if self.battery.charge_fet \
-                                                      and self.battery.control_allow_charge else 0
-        self._dbusservice['/Io/AllowToDischarge'] = 1 if self.battery.discharge_fet else 0
-        self._dbusservice['/System/NrOfModulesBlockingCharge'] = 0 if self.battery.charge_fet \
-                                                        and self.battery.control_allow_charge else 1
-        self._dbusservice['/System/NrOfModulesBlockingDischarge'] = 0 if self.battery.discharge_fet else 1
-        self._dbusservice['/System/MinCellTemperature'] = self.battery.get_min_temp()
-        self._dbusservice['/System/MaxCellTemperature'] = self.battery.get_max_temp()
-
-        # Charge control
-        self._dbusservice['/Info/MaxChargeCurrent'] = self.battery.control_charge_current
-        self._dbusservice['/Info/MaxDischargeCurrent'] = self.battery.control_discharge_current
-
-        # Updates from cells
-        self._dbusservice['/System/MinVoltageCellId'] = self.battery.get_min_cell_desc()
-        self._dbusservice['/System/MaxVoltageCellId'] = self.battery.get_max_cell_desc()
-        self._dbusservice['/System/MinCellVoltage'] = self.battery.get_min_cell_voltage()
-        self._dbusservice['/System/MaxCellVoltage'] = self.battery.get_max_cell_voltage()
-        self._dbusservice['/Balancing'] = self.battery.get_balancing()
-
-        # Update the alarms
-        self._dbusservice['/Alarms/LowVoltage'] = self.battery.protection.voltage_low
-        self._dbusservice['/Alarms/LowCellVoltage'] = self.battery.protection.voltage_cell_low
-        self._dbusservice['/Alarms/HighVoltage'] = self.battery.protection.voltage_high
-        self._dbusservice['/Alarms/LowSoc'] = self.battery.protection.soc_low
-        self._dbusservice['/Alarms/HighChargeCurrent'] = self.battery.protection.current_over
-        self._dbusservice['/Alarms/HighDischargeCurrent'] = self.battery.protection.current_under
-        self._dbusservice['/Alarms/CellImbalance'] = self.battery.protection.cell_imbalance
-        self._dbusservice['/Alarms/InternalFailure'] = self.battery.protection.internal_failure
-        self._dbusservice['/Alarms/HighChargeTemperature'] = self.battery.protection.temp_high_charge
-        self._dbusservice['/Alarms/LowChargeTemperature'] = self.battery.protection.temp_low_charge
-        self._dbusservice['/Alarms/HighTemperature'] = self.battery.protection.temp_high_discharge
-        self._dbusservice['/Alarms/LowTemperature'] = self.battery.protection.temp_low_discharge
-
-        logging.debug("logged to dbus ", round(self.battery.voltage / 100, 2),
+        pub('/System/NrOfCellsPerBattery', self.battery.cell_count)
+        pub('/Soc', self.battery.soc, 2)
+        pub('/Dc/0/Voltage', self.battery.voltage, 2)
+        pub('/Dc/0/Current', self.battery.current, 2)
+        if self.battery.current is not None and self.battery.voltage is not None and self.battery.soc is not None:
+            pub('/Dc/0/Power', self.battery.voltage * self.battery.current, 2)
+            logging.debug("logged to dbus ", round(self.battery.voltage / 100, 2),
                       round(self.battery.current / 100, 2),
                       round(self.battery.soc, 2))
+
+        pub('/Dc/0/Temperature', self.battery.get_temp())
+        pub('/Capacity', self.battery.capacity_remain)
+
+        # Update battery extras
+        pub('/History/ChargeCycles', self.battery.cycles)
+        pub('/History/TotalAhDrawn', self.battery.total_ah_drawn)
+        pub('/Io/AllowToCharge', 1 if self.battery.charge_fet \
+                                                      and self.battery.control_allow_charge else 0)
+        pub('/Io/AllowToDischarge', 1 if self.battery.discharge_fet else 0)
+        pub('/System/NrOfModulesBlockingCharge', 0 if self.battery.charge_fet \
+                                                        and self.battery.control_allow_charge else 1)
+        pub('/System/NrOfModulesBlockingDischarge', 0 if self.battery.discharge_fet else 1)
+        pub('/System/MinCellTemperature', self.battery.get_min_temp())
+        pub('/System/MaxCellTemperature', self.battery.get_max_temp())
+
+        # Charge control
+        pub('/Info/MaxChargeCurrent', self.battery.control_charge_current)
+        pub('/Info/MaxDischargeCurrent', self.battery.control_discharge_current)
+
+        # Updates from cells
+        pub('/System/MinVoltageCellId', self.battery.get_min_cell_desc())
+        pub('/System/MaxVoltageCellId', self.battery.get_max_cell_desc())
+        pub('/System/MinCellVoltage', self.battery.get_min_cell_voltage())
+        pub('/System/MaxCellVoltage', self.battery.get_max_cell_voltage())
+        pub('/Balancing', self.battery.get_balancing())
+
+        # Update the alarms
+        pub('/Alarms/LowVoltage', self.battery.protection.voltage_low)
+        pub('/Alarms/LowCellVoltage', self.battery.protection.voltage_cell_low)
+        pub('/Alarms/HighVoltage', self.battery.protection.voltage_high)
+        pub('/Alarms/LowSoc', self.battery.protection.soc_low)
+        pub('/Alarms/HighChargeCurrent', self.battery.protection.current_over)
+        pub('/Alarms/HighDischargeCurrent', self.battery.protection.current_under)
+        pub('/Alarms/CellImbalance', self.battery.protection.cell_imbalance)
+        pub('/Alarms/InternalFailure', self.battery.protection.internal_failure)
+        pub('/Alarms/HighChargeTemperature', self.battery.protection.temp_high_charge)
+        pub('/Alarms/LowChargeTemperature', self.battery.protection.temp_low_charge)
+        pub('/Alarms/HighTemperature', self.battery.protection.temp_high_discharge)
+        pub('/Alarms/LowTemperature', self.battery.protection.temp_low_discharge)
