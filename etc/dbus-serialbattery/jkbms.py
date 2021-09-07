@@ -28,10 +28,10 @@ class Jkbms(Battery):
         self.client.loop_start()
 
     def on_message(self, client, userdata, msg):
-        try:
-            print(msg.topic+" "+str(msg.payload))
-        except:
-            print(msg.topic+" cannot decode payload")
+        #try:
+        #    print(msg.topic+" "+str(msg.payload))
+        #except:
+        #    print(msg.topic+" cannot decode payload")
         _, _, k, x = msg.topic.split('/')
         v = msg.payload
         if x != 'value':
@@ -78,7 +78,8 @@ class Jkbms(Battery):
         elif k == 'software_version':
             self.version = 'JKBMS SW ' + str(v)
         else:
-            print("  unparsed")
+            pass
+            #print("  unparsed")
 
 
     def on_connect(self, client, userdata, flags, rc):
@@ -158,7 +159,6 @@ class Jkbms(Battery):
             #self.cell_min_no = [n for n, v in self.voltage_cell.items() if v == self.cell_min_voltage][0]
 
             cell_min = min([c.voltage for c in self.cells])
-            print('cell_min', cell_min)
             if cell_min > 0.1:
                 self.protection.voltage_cell_low = 2 if cell_min < MIN_CELL_VOLTAGE - 0.1 else 1 if cell_min < MIN_CELL_VOLTAGE else 0
             else:
