@@ -51,14 +51,18 @@ def main():
         if port.startswith('jkbms'):
             return JkbmsMqtt(port=port, baud=9600)
 
+
         if len(sys.argv) > 2:
             test = battery_types[int(sys.argv[2])]
-            while True:
+            count = 10
+            while count > 0:
                 if test.test_connection():
-                    break
+                    logger.info('Connection established to ' + test.__class__.__name__)
+                    return test
                 logger.error('Connection failed to ' + test.__class__.__name__)
-            logger.info('Connection established to ' + test.__class__.__name__)
-            return test
+                sleep(1)
+                count -= 1
+            return None
 
         # try to establish communications with the battery 3 times, else exit
         count = 3
