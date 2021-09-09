@@ -51,6 +51,15 @@ def main():
         if port.startswith('jkbms'):
             return JkbmsMqtt(port=port, baud=9600)
 
+        if len(sys.argv) > 2:
+            test = battery_types[int(sys.argv[2])]
+            while True:
+                if test.test_connection():
+                    break
+                logger.error('Connection failed to ' + test.__class__.__name__)
+            logger.info('Connection established to ' + test.__class__.__name__)
+            return test
+
         # try to establish communications with the battery 3 times, else exit
         count = 3
         while count > 0:
@@ -91,7 +100,10 @@ def main():
     mainloop = gobject.MainLoop()
 
     # Get the initial values for the battery used by setup_vedbus
-    helper = DbusHelper(battery)
+    port = None
+    if len(sys.argv) > 3:
+        port = sys.argv[3]
+    helper = DbusHelper(battery, port=port)
     if not helper.setup_vedbus():
         logger.error("ERROR >>> Problem with battery set up at " + port)
         return

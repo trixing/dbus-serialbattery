@@ -17,13 +17,16 @@ def get_bus():
 
 class DbusHelper:
 
-    def __init__(self, battery):
+    def __init__(self, battery, port=None):
         self.battery = battery
         self.instance = 1
         self.settings = None
-        self._dbusservice = VeDbusService("com.victronenergy.battery." +
-                                          self.battery.port[self.battery.port.rfind('/') + 1:],
-                                          get_bus())
+        port = port or self.battery.port[self.battery.port.rfind('/') + 1:]
+        if port == 'test':
+            self._path = "com.victronenergy.test_battery." + port
+        else:
+            self._path = "com.victronenergy.battery." + port
+        self._dbusservice = VeDbusService(self._path, get_bus())
 
     def setup_instance(self):
         path = '/Settings/Devices/serialbattery'
@@ -48,7 +51,7 @@ class DbusHelper:
         # Set up dbus service and device instance
         # and notify of all the attributes we intend to update
         self.setup_instance()
-        logger.debug("%s" % ("com.victronenergy.battery." + self.battery.port[self.battery.port.rfind('/') + 1:]))
+        logger.debug(self._path)
 
         # Get the settings for the battery
         if not self.battery.get_settings():
@@ -123,6 +126,8 @@ class DbusHelper:
         self._dbusservice.add_path('/Alarms/HighTemperature', None, writeable=True)
         self._dbusservice.add_path('/Alarms/LowTemperature', None, writeable=True)
 
+        self._dbusservice.add_path('/Internal/Temperature', None, writeable=True)
+
         return True
 
     def publish_battery(self, loop):
@@ -193,3 +198,22 @@ class DbusHelper:
         pub('/Alarms/LowChargeTemperature', self.battery.protection.temp_low_charge)
         pub('/Alarms/HighTemperature', self.battery.protection.temp_high_discharge)
         pub('/Alarms/LowTemperature', self.battery.protection.temp_low_discharge)
+        
+        for i, c in enumerate(self.battery.cells):
+            path = '/Internal/Cell/%d/Voltage' % (i+1)
+            v = self.battery.cells[i].voltage
+            if path not in self._dbusservice:
+                self._dbusservice.add_path(path, v)
+            else:
+                pub(path, v)
+
+        pub('/Internal/Temperature', self.battery.temp_internal)
+
+        internal = getattr(self.battery, '_internal', {})
+        for k, v in internal.items():
+            cc = ''.join([w.title() for w in k.split('_')])
+            path = '/Internal/Settings/' + cc
+            if path not in self._dbusservice:
+                self._dbusservice.add_path(path, v)
+            else:
+                pub('/Internal/Settings/' + cc, v)

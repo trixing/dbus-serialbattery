@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from battery import Protection, Battery, Cell
 from utils import *
 from struct import *
+import serial
 
 class Jkbms(Battery):
 
@@ -68,8 +69,10 @@ class Jkbms(Battery):
             for c in range(self.cell_count):
                 self.cells[c].voltage = unpack_from('>xH', celldata, c * 3 + 1)[0]/1000
         
+        temp0 =  unpack_from('>H', self.get_data(status_data, b'\x80', 2))[0] 
         temp1 =  unpack_from('>H', self.get_data(status_data, b'\x81', 2))[0] 
         temp2 =  unpack_from('>H', self.get_data(status_data, b'\x82', 2))[0] 
+        self.to_temp(0, temp0 if temp0 <= 100 else 100 - temp0)
         self.to_temp(1, temp1 if temp1 <= 100 else 100 - temp1)
         self.to_temp(2, temp2 if temp2 <= 100 else 100 - temp2)
         
@@ -92,7 +95,36 @@ class Jkbms(Battery):
         self.production = unpack_from('>8s', self.get_data(status_data, b'\xB4', 8))[0]
         self.version = unpack_from('>15s', self.get_data(status_data, b'\xB7', 15))[0]
 
-        # logger.info(self.hardware_version)
+        self.balancing =  unpack_from('>B', self.get_data(status_data, b'\x9d', 1))[0] == 1
+        self._internal = dict(
+            manufactured = unpack_from('>4s', self.get_data(status_data, b'\xB5', 4))[0],
+            #manufacturer_id = unpack_from('>24s', self.get_data(status_data, b'\xBA', 24))[0],
+            #system_working_time = unpack_from('>L', self.get_data(status_data, b'\xB6', 4))[0],
+            battery_capacity_estimated = unpack_from('>L', self.get_data(status_data, b'\xB9', 4))[0],
+            over_voltage =  unpack_from('>H', self.get_data(status_data, b'\x8E', 2))[0] / 100.0,
+            under_voltage =  unpack_from('>H', self.get_data(status_data, b'\x8F', 2))[0] / 100.0,
+            cell_over_voltage =  unpack_from('>H', self.get_data(status_data, b'\x90', 2))[0] / 1000.0,
+            cell_over_voltage_recovery =  unpack_from('>H', self.get_data(status_data, b'\x91', 2))[0] / 1000.0,
+            cell_over_voltage_delay =  unpack_from('>H', self.get_data(status_data, b'\x92', 2))[0],
+            cell_under_voltage =  unpack_from('>H', self.get_data(status_data, b'\x93', 2))[0] / 1000.0,
+            cell_under_voltage_recovery =  unpack_from('>H', self.get_data(status_data, b'\x94', 2))[0] / 1000.0,
+            cell_under_voltage_delay =  unpack_from('>H', self.get_data(status_data, b'\x95', 2))[0],
+            cell_diff_voltage_max =  unpack_from('>H', self.get_data(status_data, b'\x96', 2))[0]/1000.0,
+            discharge_over_current =  unpack_from('>H', self.get_data(status_data, b'\x97', 2))[0],
+            discharge_over_current_delay =  unpack_from('>H', self.get_data(status_data, b'\x98', 2))[0],
+            charge_over_current =  unpack_from('>H', self.get_data(status_data, b'\x99', 2))[0],
+            charge_over_current_delay =  unpack_from('>H', self.get_data(status_data, b'\x9a', 2))[0],
+            balancer_start_voltage =  unpack_from('>H', self.get_data(status_data, b'\x9b', 2))[0] / 1000.0,
+            balancer_min_diff_voltage =  unpack_from('>H', self.get_data(status_data, b'\x9c', 2))[0] / 1000.0,
+            mos_over_temperature =  unpack_from('>H', self.get_data(status_data, b'\x9e', 2))[0],
+            cell_over_temperature =  unpack_from('>H', self.get_data(status_data, b'\xa0', 2))[0],
+            charge_low_temperature =  unpack_from('>H', self.get_data(status_data, b'\xa5', 2))[0],
+            discharge_low_temperature =  unpack_from('>H', self.get_data(status_data, b'\xa7', 2))[0],
+            soc_low =  unpack_from('>B', self.get_data(status_data, b'\xb1', 1))[0],
+
+        )
+
+        logger.info('Success: %.2fV %.1f%%' % (self.voltage, self.soc))
         return True
        
     def to_fet_bits(self, byte_data):
@@ -121,6 +153,10 @@ class Jkbms(Battery):
         
     def read_serial_data_jkbms(self, command):
         # use the read_serial_data() function to read the data and then do BMS spesific checks (crc, start bytes, etc)
+        #with serial.Serial(port, baudrate=baud, timeout=0.1) as ser:
+        #except serial.SerialException as e:
+        #    logger.error(e)
+        #    return False
         data = read_serial_data(command, self.port, self.baud_rate, self.LENGTH_POS, self.LENGTH_CHECK,None, self.LENGTH_SIZE)
         if data is False:
             return False

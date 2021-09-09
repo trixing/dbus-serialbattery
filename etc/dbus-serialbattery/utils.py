@@ -48,12 +48,12 @@ def read_serial_data(command, port, baud, length_pos, length_check, length_fixed
                 count += 1
                 if count > 50:
                     logger.error(">>> ERROR: No reply - returning")
-                    return False
+                    return False 
                     # raise Exception("No reply from {}".format(port))
             #logger.info('serial data toread ' + str(toread))
             res = ser.read(toread)
             if len(res) < length_pos and length_fixed is None:
-                logger.error(">>> ERROR: No reply - returning")
+                logger.error(">>> ERROR: Short reply - returning")
                 return False
             length_size = length_size if length_size is not None else 'B'
             length = length_fixed if length_fixed is not None else unpack_from(length_size, res,length_pos)[0]

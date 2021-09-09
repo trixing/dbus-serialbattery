@@ -2,3 +2,5 @@
 venv
 venus-data.tar.gz
 BMS-trials
+*.pyc
+*~

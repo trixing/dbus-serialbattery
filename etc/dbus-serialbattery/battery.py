@@ -51,6 +51,7 @@ class Battery(object):
         self.discharge_fet = None
         self.cell_count = None
         self.temp_sensors = None
+        self.temp_internal = None
         self.temp1 = None
         self.temp2 = None
         self.cells = []
@@ -65,6 +66,7 @@ class Battery(object):
         # max battery charge/discharge current
         self.max_battery_current = None
         self.max_battery_discharge_current = None
+        self.balancing = None
 
     def test_connection(self):
         # Each driver must override this function to test if a connection can be made
@@ -92,6 +94,8 @@ class Battery(object):
             self.temp1 = min(max(value, -20), 100)
         if sensor == 2:
             self.temp2 = min(max(value, -20), 100)
+        if sensor == 0:
+            self.temp_internal = min(max(value, -20), 100)
 
     def manage_charge_current(self):
         # Start with the current values
@@ -178,6 +182,8 @@ class Battery(object):
         return None if max_voltage == 0 else max_voltage
 
     def get_balancing(self):
+        if self.balancing is not None:
+            return 1
         for c in range(min(len(self.cells), self.cell_count)):
             if self.cells[c].balance is not None and self.cells[c].balance:
                 return 1
