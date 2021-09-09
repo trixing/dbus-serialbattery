@@ -9,10 +9,10 @@ import time
 
 
 
-class Jkbms(Battery):
+class JkbmsMqtt(Battery):
 
     def __init__(self, port, baud):
-        super(Jkbms, self).__init__(port, baud)
+        super(JkbmsMqtt, self).__init__(port, baud)
         self.type = self.BATTERYTYPE
         self.cells = [Cell(0) for _ in range(16)]
         self.voltage_cell = {}
