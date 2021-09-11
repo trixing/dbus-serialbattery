@@ -22,9 +22,16 @@ from sinowealth import Sinowealth
 #from mnb import MNB
 
 # Logging
-logging.info('Starting dbus-serialbattery')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+logging.info('Starting dbus-serialbattery')
+
 
 def main():
 
@@ -54,7 +61,7 @@ def main():
 
         if len(sys.argv) > 2:
             test = battery_types[int(sys.argv[2])]
-            count = 10
+            count = 5
             while count > 0:
                 if test.test_connection():
                     logger.info('Connection established to ' + test.__class__.__name__)
