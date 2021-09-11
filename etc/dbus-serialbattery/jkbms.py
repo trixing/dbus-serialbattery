@@ -98,10 +98,10 @@ class Jkbms(Battery):
 
         self.to_protection_bits(unpack_from('>H', self.get_data(status_data, b'\x8B', 2))[0] )
         self.to_fet_bits(unpack_from('>H', self.get_data(status_data, b'\x8C', 2))[0] )
-
+        # 8D does not exist
         self._internal = dict(
-            over_voltage =  unpack_from('>H', self.get_data(status_data, b'\x8E', 2))[0] / 100.0,
-            under_voltage =  unpack_from('>H', self.get_data(status_data, b'\x8F', 2))[0] / 100.0,
+            battery_over_voltage =  unpack_from('>H', self.get_data(status_data, b'\x8E', 2))[0] / 100.0,
+            battery_under_voltage =  unpack_from('>H', self.get_data(status_data, b'\x8F', 2))[0] / 100.0,
             cell_over_voltage =  unpack_from('>H', self.get_data(status_data, b'\x90', 2))[0] / 1000.0,
             cell_over_voltage_recovery =  unpack_from('>H', self.get_data(status_data, b'\x91', 2))[0] / 1000.0,
             cell_over_voltage_delay =  unpack_from('>H', self.get_data(status_data, b'\x92', 2))[0],
@@ -117,22 +117,40 @@ class Jkbms(Battery):
             balancer_min_diff_voltage =  unpack_from('>H', self.get_data(status_data, b'\x9c', 2))[0] / 1000.0,
             balancing =  unpack_from('>B', self.get_data(status_data, b'\x9d', 1))[0] == 1,
             mos_over_temperature =  unpack_from('>H', self.get_data(status_data, b'\x9e', 2))[0],
+            mos_over_temperature_recovery =  unpack_from('>H', self.get_data(status_data, b'\x9f', 2))[0],
             cell_over_temperature =  unpack_from('>H', self.get_data(status_data, b'\xa0', 2))[0],
+            cell_over_temperature_recovery =  unpack_from('>H', self.get_data(status_data, b'\xa1', 2))[0],
+            cell_diff_protection =  unpack_from('>H', self.get_data(status_data, b'\xa2', 2))[0],
+            cell_charge_high_temperature =  unpack_from('>H', self.get_data(status_data, b'\xa3', 2))[0],
+            cell_discharge_high_temperature =  unpack_from('>H', self.get_data(status_data, b'\xa4', 2))[0],
             charge_low_temperature =  unpack_from('>H', self.get_data(status_data, b'\xa5', 2))[0],
+            charge_low_temperature_recovery =  unpack_from('>H', self.get_data(status_data, b'\xa6', 2))[0],
             discharge_low_temperature =  unpack_from('>H', self.get_data(status_data, b'\xa7', 2))[0],
+            discharge_low_temperature_recovery =  unpack_from('>H', self.get_data(status_data, b'\xa8', 2))[0],
+            cell_count_setting = unpack_from('>B', self.get_data(status_data, b'\xA9', 1))[0],
             capacity = unpack_from('>L', self.get_data(status_data, b'\xAA', 4))[0],
+            charge_switch =  unpack_from('>B', self.get_data(status_data, b'\xAB', 1))[0],
+            discharge_switch =  unpack_from('>B', self.get_data(status_data, b'\xAC', 1))[0],
+            current_calibration =  unpack_from('>H', self.get_data(status_data, b'\xAD', 2))[0],
+            guard_plate_address =  unpack_from('>B', self.get_data(status_data, b'\xAE', 1))[0],
+            battery_type =  unpack_from('>B', self.get_data(status_data, b'\xAF', 1))[0],
+            sleep_time =  unpack_from('>H', self.get_data(status_data, b'\xB0', 2))[0],
             soc_low =  unpack_from('>B', self.get_data(status_data, b'\xb1', 1))[0],
+            password =  unpack_from('>10s', self.get_data(status_data, b'\xb2', 10))[0].rstrip(b'\0'),
+            special_charger_switch =  unpack_from('>B', self.get_data(status_data, b'\xb3', 1))[0],
+            production = unpack_from('>8s', self.get_data(status_data, b'\xB4', 8))[0].rstrip(b'\0'),
+            manufactured = unpack_from('>4s', self.get_data(status_data, b'\xB5', 4))[0].rstrip(b'\0'),
             system_working_time = unpack_from('>L', self.get_data(status_data, b'\xB6', 4))[0],
+            version = unpack_from('>15s', self.get_data(status_data, b'\xB7', 15))[0].rstrip(b'\0'),
+            calibration_start =  unpack_from('>B', self.get_data(status_data, b'\xb8', 1))[0],
             battery_capacity_estimated = unpack_from('>L', self.get_data(status_data, b'\xB9', 4))[0],
             # This does not exist in all replies
             # manufacturer_id = unpack_from('>24s', self.get_data(status_data, b'\xBA', 24))[0],
         )
         self.balancing = self._internal['balancing']
         self.capacity = self._internal['capacity']
-        self.production = unpack_from('>8s', self.get_data(status_data, b'\xB4', 8))[0]
-
-        self._internal['manufactured'] = unpack_from('>4s', self.get_data(status_data, b'\xB5', 4))[0],
-        self.version = unpack_from('>15s', self.get_data(status_data, b'\xB7', 15))[0]
+        self.production = self._internal['production']
+        self.version = self._internal['version']
 
         logger.info('Success: %.2fV %.1f%% C%d' % (self.voltage, self.soc, self.cell_count))
         return True
@@ -173,6 +191,9 @@ class Jkbms(Battery):
                     self._serial.flushInput()
                 self._serial.write(command)
                 start_data = self._serial.read(11)
+                if len(start_data) < 11:
+                    logger.error('Did not receive enough header data')
+                    return False
                 start, length, terminal, cmd, crc, tt = unpack_from('>HHLBBB', start_data)
                 # Do checks
                 serial_data = self._serial.read(length - 9)
