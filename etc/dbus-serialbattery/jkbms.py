@@ -96,7 +96,7 @@ class Jkbms(Battery):
             logger.error('Misconfigured number of cells, got %d' % self.cell_count)
             return False
 
-        self.to_protection_bits(unpack_from('>H', self.get_data(status_data, b'\x8B', 2))[0] )
+        protection = self.to_protection_bits(unpack_from('>H', self.get_data(status_data, b'\x8B', 2))[0] )
         self.to_fet_bits(unpack_from('>H', self.get_data(status_data, b'\x8C', 2))[0] )
         # 8D does not exist
         self._internal = dict(
@@ -145,14 +145,20 @@ class Jkbms(Battery):
             calibration_start =  unpack_from('>B', self.get_data(status_data, b'\xb8', 1))[0],
             battery_capacity_estimated = unpack_from('>L', self.get_data(status_data, b'\xB9', 4))[0],
             # This does not exist in all replies
-            # manufacturer_id = unpack_from('>24s', self.get_data(status_data, b'\xBA', 24))[0],
+            # manufacturer_id = unpack_from('>24s', self.get_data(status_data, b'\xBA', 24))[0].rstrip(b'\0'),
+            # _restart =  unpack_from('>B', self.get_data(status_data, b'\xbb', 1))[0],
+            # _restore =  unpack_from('>B', self.get_data(status_data, b'\xbc', 1))[0],
+            # _start_upgrade =  unpack_from('>B', self.get_data(status_data, b'\xbd', 1))[0],
+            # gps_low_voltage =  unpack_from('>H', self.get_data(status_data, b'\xbe', 2))[0] / 1000.0,
+            # gps_low_voltage_recovery =  unpack_from('>H', self.get_data(status_data, b'\xbf', 2))[0] / 1000.0,
+            # data_format_version =  unpack_from('>H', self.get_data(status_data, b'\xc0', 1))[0],
         )
         self.balancing = self._internal['balancing']
         self.capacity = self._internal['capacity']
         self.production = self._internal['production']
         self.version = self._internal['version']
 
-        logger.info('Success: %.2fV %.1f%% C%d' % (self.voltage, self.soc, self.cell_count))
+        logger.info('%.2fV %.1f%% P%s' % (self.voltage, self.soc, protection))
         return True
        
     def to_fet_bits(self, byte_data):
@@ -163,9 +169,6 @@ class Jkbms(Battery):
     def to_protection_bits(self, byte_data):
         pos=13
         tmp = bin(byte_data)[15-pos:].rjust(pos + 1, zero_char)
-        logger.info('Protection bits: %s' % tmp)
-        if tmp != '00000000000000':
-            logger.info('Bytes: %d %r' % (len(byte_data), byte_data))
         self.protection.soc_low = 2 if is_bit_set(tmp[pos-0]) else 0
         self.protection.set_IC_inspection = 2 if is_bit_set(tmp[pos-1]) else 0 # BMS over temp
         self.protection.voltage_high = 2 if is_bit_set(tmp[pos-2]) else 0
@@ -179,6 +182,7 @@ class Jkbms(Battery):
         self.protection.temp_low_charge = 1 if is_bit_set(tmp[pos-4]) or is_bit_set(tmp[pos-8]) else 0
         self.protection.temp_high_discharge = 1 if is_bit_set(tmp[pos-4]) or is_bit_set(tmp[pos-8]) else 0
         self.protection.temp_low_discharge = 1 if is_bit_set(tmp[pos-4]) or is_bit_set(tmp[pos-8]) else 0
+        return tmp
 
         
     def read_serial_data_jkbms(self, command):
