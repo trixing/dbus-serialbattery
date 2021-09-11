@@ -213,7 +213,10 @@ class DbusHelper:
         for k, v in internal.items():
             cc = ''.join([w.title() for w in k.split('_')])
             path = '/Internal/Settings/' + cc
-            if path not in self._dbusservice:
+            try:
+              if path not in self._dbusservice:
                 self._dbusservice.add_path(path, v)
-            else:
+              else:
                 pub('/Internal/Settings/' + cc, v)
+            except UnicodeDecodeError:
+                logger.error('Cannot decode: %r' % cc)
