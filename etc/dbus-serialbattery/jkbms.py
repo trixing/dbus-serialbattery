@@ -10,6 +10,7 @@ class Jkbms(Battery):
     def __init__(self, port,baud):
         super(Jkbms, self).__init__(port,baud)
         self.type = self.BATTERYTYPE
+        self._serial = None
 
     BATTERYTYPE = "Jkbms"
     LENGTH_CHECK = 1
@@ -34,7 +35,7 @@ class Jkbms(Battery):
         self.min_battery_voltage = MIN_CELL_VOLTAGE * self.cell_count
 
         # init the cell array
-        for c in range(self.cell_count):
+        while len(self.cells) < self.cell_count:
           self.cells.append(Cell(False))
 
         self.hardware_version = "JKBMS " + str(self.cell_count) + " cells"
@@ -51,24 +52,23 @@ class Jkbms(Battery):
     def get_data(self, bytes, idcode, length):
         start = bytes.find(idcode)
         if start < 0: return False
-        return bytes[start+1:start+length+1]
-
+        ret = bytes[start+1:start+length+1]
+        del bytes[start:start+length+1]
+        return ret
 
     def read_status_data(self):
         status_data = self.read_serial_data_jkbms(self.command_status)
         # check if connection success
         if status_data is False:
             return False
-
-        self.cell_count = unpack_from('>H', self.get_data(status_data, b'\x8A', 2))[0]
-
+        del status_data[0]
         # cell voltages
         cellbyte_count = unpack_from('>B', self.get_data(status_data, b'\x79', 1))[0]
-        if cellbyte_count == 3*self.cell_count and self.cell_count == len(self.cells):
-            celldata =  self.get_data(status_data, b'\x79', 1 + cellbyte_count)
-            for c in range(self.cell_count):
-                self.cells[c].voltage = unpack_from('>xH', celldata, c * 3 + 1)[0]/1000
-        
+        while len(self.cells) < (cellbyte_count/3):
+            self.cells.append(Cell(False))
+        for c in self.cells:
+            c.voltage = unpack_from('>xH', status_data)[0]/1000
+            del status_data[:3]
         temp0 =  unpack_from('>H', self.get_data(status_data, b'\x80', 2))[0] 
         temp1 =  unpack_from('>H', self.get_data(status_data, b'\x81', 2))[0] 
         temp2 =  unpack_from('>H', self.get_data(status_data, b'\x82', 2))[0] 
@@ -83,24 +83,23 @@ class Jkbms(Battery):
         self.current = current / -100 if current < self.CURRENT_ZERO_CONSTANT else (current - self.CURRENT_ZERO_CONSTANT) / 100
 
         self.soc =  unpack_from('>B', self.get_data(status_data, b'\x85', 1))[0] 
+        if self.soc > 100:
+            logger.error('Invalid soc: %r' % [status_data])
 
+        temperature_sensor_count =  unpack_from('>B', self.get_data(status_data, b'\x86', 1))[0] 
         self.cycles =  unpack_from('>H', self.get_data(status_data, b'\x87', 2))[0] 
-
-        self.capacity = unpack_from('>L', self.get_data(status_data, b'\xAA', 4))[0] 
+        # 0x88 does not exist
         self.capacity_remain = unpack_from('>L', self.get_data(status_data, b'\x89', 4))[0]
-        
-        self.to_fet_bits(unpack_from('>H', self.get_data(status_data, b'\x8C', 2))[0] )
+
+        self.cell_count = unpack_from('>H', self.get_data(status_data, b'\x8A', 2))[0]
+        if self.cell_count != len(self.cells):
+            logger.error('Misconfigured number of cells, got %d' % self.cell_count)
+            return False
+
         self.to_protection_bits(unpack_from('>H', self.get_data(status_data, b'\x8B', 2))[0] )
+        self.to_fet_bits(unpack_from('>H', self.get_data(status_data, b'\x8C', 2))[0] )
 
-        self.production = unpack_from('>8s', self.get_data(status_data, b'\xB4', 8))[0]
-        self.version = unpack_from('>15s', self.get_data(status_data, b'\xB7', 15))[0]
-
-        self.balancing =  unpack_from('>B', self.get_data(status_data, b'\x9d', 1))[0] == 1
         self._internal = dict(
-            manufactured = unpack_from('>4s', self.get_data(status_data, b'\xB5', 4))[0],
-            #manufacturer_id = unpack_from('>24s', self.get_data(status_data, b'\xBA', 24))[0],
-            #system_working_time = unpack_from('>L', self.get_data(status_data, b'\xB6', 4))[0],
-            battery_capacity_estimated = unpack_from('>L', self.get_data(status_data, b'\xB9', 4))[0],
             over_voltage =  unpack_from('>H', self.get_data(status_data, b'\x8E', 2))[0] / 100.0,
             under_voltage =  unpack_from('>H', self.get_data(status_data, b'\x8F', 2))[0] / 100.0,
             cell_over_voltage =  unpack_from('>H', self.get_data(status_data, b'\x90', 2))[0] / 1000.0,
@@ -116,15 +115,26 @@ class Jkbms(Battery):
             charge_over_current_delay =  unpack_from('>H', self.get_data(status_data, b'\x9a', 2))[0],
             balancer_start_voltage =  unpack_from('>H', self.get_data(status_data, b'\x9b', 2))[0] / 1000.0,
             balancer_min_diff_voltage =  unpack_from('>H', self.get_data(status_data, b'\x9c', 2))[0] / 1000.0,
+            balancing =  unpack_from('>B', self.get_data(status_data, b'\x9d', 1))[0] == 1,
             mos_over_temperature =  unpack_from('>H', self.get_data(status_data, b'\x9e', 2))[0],
             cell_over_temperature =  unpack_from('>H', self.get_data(status_data, b'\xa0', 2))[0],
             charge_low_temperature =  unpack_from('>H', self.get_data(status_data, b'\xa5', 2))[0],
             discharge_low_temperature =  unpack_from('>H', self.get_data(status_data, b'\xa7', 2))[0],
+            capacity = unpack_from('>L', self.get_data(status_data, b'\xAA', 4))[0],
             soc_low =  unpack_from('>B', self.get_data(status_data, b'\xb1', 1))[0],
-
+            system_working_time = unpack_from('>L', self.get_data(status_data, b'\xB6', 4))[0],
+            battery_capacity_estimated = unpack_from('>L', self.get_data(status_data, b'\xB9', 4))[0],
+            # This does not exist in all replies
+            # manufacturer_id = unpack_from('>24s', self.get_data(status_data, b'\xBA', 24))[0],
         )
+        self.balancing = self._internal['balancing']
+        self.capacity = self._internal['capacity']
+        self.production = unpack_from('>8s', self.get_data(status_data, b'\xB4', 8))[0]
 
-        logger.info('Success: %.2fV %.1f%%' % (self.voltage, self.soc))
+        self._internal['manufactured'] = unpack_from('>4s', self.get_data(status_data, b'\xB5', 4))[0],
+        self.version = unpack_from('>15s', self.get_data(status_data, b'\xB7', 15))[0]
+
+        logger.info('Success: %.2fV %.1f%% C%d' % (self.voltage, self.soc, self.cell_count))
         return True
        
     def to_fet_bits(self, byte_data):
@@ -135,6 +145,9 @@ class Jkbms(Battery):
     def to_protection_bits(self, byte_data):
         pos=13
         tmp = bin(byte_data)[15-pos:].rjust(pos + 1, zero_char)
+        logger.info('Protection bits: %s' % tmp)
+        if tmp != '00000000000000':
+            logger.info('Bytes: %d %r' % (len(byte_data), byte_data))
         self.protection.soc_low = 2 if is_bit_set(tmp[pos-0]) else 0
         self.protection.set_IC_inspection = 2 if is_bit_set(tmp[pos-1]) else 0 # BMS over temp
         self.protection.voltage_high = 2 if is_bit_set(tmp[pos-2]) else 0
@@ -151,20 +164,55 @@ class Jkbms(Battery):
 
         
     def read_serial_data_jkbms(self, command):
-        # use the read_serial_data() function to read the data and then do BMS spesific checks (crc, start bytes, etc)
-        #with serial.Serial(port, baudrate=baud, timeout=0.1) as ser:
-        #except serial.SerialException as e:
-        #    logger.error(e)
-        #    return False
-        data = read_serial_data(command, self.port, self.baud_rate, self.LENGTH_POS, self.LENGTH_CHECK,None, self.LENGTH_SIZE)
-        if data is False:
+        if True:
+            # Keep the port persistently open.
+            try:
+                if not self._serial:
+                    self._serial = serial.Serial(self.port, baudrate=self.baud_rate, timeout=1.0)
+                    self._serial.flushOutput()
+                    self._serial.flushInput()
+                self._serial.write(command)
+                start_data = self._serial.read(11)
+                start, length, terminal, cmd, crc, tt = unpack_from('>HHLBBB', start_data)
+                # Do checks
+                serial_data = self._serial.read(length - 9)
+                # self._serial.close()
+            except serial.SerialException as e:
+                self._serial = None
+                logger.error(e)
+                return False
+            if not serial_data:
+                return False
+            data = bytearray()
+            data.extend(start_data)
+            data.extend(serial_data)
+        else:
+
+            # use the read_serial_data() function to read the data and then do BMS spesific checks (crc, start bytes, etc)
+            data = read_serial_data(command, self.port, self.baud_rate, self.LENGTH_POS,
+                                    self.LENGTH_CHECK, None, self.LENGTH_SIZE)
+            if data is False:
+                return False
+            start, length, terminal, cmd, crc, tt = unpack_from('>HHLBBB', data)
+
+        frame, frame1, end, crc_hi, crc_lo = unpack_from('>HHBHH', data[-9:])
+
+        if start != 0x4E57 or end != 0x68:
+            logger.error(">>> ERROR: Incorrect Reply magic bytes: %04x %02x" % (start, end))
             return False
 
-        start, length = unpack_from('>HH', data)
-        end, crc = unpack_from('>BI', data[-5:])
-        
-        if start == 0x4E57 and end == 0x68:
-            return data[10:length-19]
-        else:
-            logger.error(">>> ERROR: Incorrect Reply ")
+        crc_calc = sum(data[0:-4])
+        if crc_calc != crc_lo:
+            logger.error('CRC checksum mismatch: Expected 0x%04x, Got 0x%04x' % (crc_lo, crc_calc))
             return False
+
+        if cmd != 6:
+            logger.error('Got wrong command code back: 0x%02x' % cmd)
+            return False
+
+        if tt != 1:
+            logger.error('Got wrong transmission type code back: 0x%02x' % tt)
+            return False
+        
+
+        return data[10:-9]
