@@ -160,7 +160,12 @@ class Jkbms(Battery):
         self.production = self._internal['production']
         self.version = self._internal['version']
 
-        logger.info('%.2fV %.1f%% P%s T%.2f %.2f %.2f' % (self.voltage, self.soc, protection, temp0, temp1, temp2))
+        max_cell_voltage = self.get_max_cell_voltage() or 0.0
+        min_cell_voltage = self.get_min_cell_voltage() or 0.0
+        logger.info('%.2fV (%.3f-%.3f), %.1f%%, P%s, T%d %d %d' % (
+            self.voltage,min_cell_voltage, max_cell_voltage,
+            self.soc, protection, temp0, temp1, temp2,
+            ))
         return True
        
     def to_fet_bits(self, byte_data):

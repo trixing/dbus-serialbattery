@@ -125,7 +125,7 @@ class Battery(object):
             logger.warning('Invalid battery state, disabling charging.')
             return
         # our input data
-        logger.info('SoC %d, Cells %.3fV-%.3fV, Pack %.2fV' % (
+        logger.debug('SoC %d, Cells %.3fV-%.3fV, Pack %.2fV' % (
             self.soc, min_cell_voltage, max_cell_voltage, self.voltage))
 
         cell_limiter = self.max_battery_voltage_warning / self.cell_count
