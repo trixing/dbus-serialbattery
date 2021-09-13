@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
+import logging
 import utils
+
+# Logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
 
 class Protection(object):
     # 2 = Alarm, 1 = Warning, 0 = Normal
@@ -63,6 +70,7 @@ class Battery(object):
         self.control_discharge_current = None
         self.control_charge_current = None
         self.control_allow_charge = None
+        self.control_allow_discharge = True
         # max battery charge/discharge current
         self.max_battery_current = None
         self.max_battery_discharge_current = None
@@ -97,33 +105,75 @@ class Battery(object):
         if sensor == 0:
             self.temp_internal = min(max(value, -20), 100)
 
+    def linear(self, value, threshold, max_value):
+        if value < threshold:
+            return 1.0
+        return max((1 - (value - threshold)/(max_value - threshold)), 0.0)
+
     def manage_charge_current(self):
+
+
         # Start with the current values
-
-        # Change depending on the SOC values
-        if self.soc > 99:
+        max_cell_voltage = self.get_max_cell_voltage() or None
+        min_cell_voltage = self.get_min_cell_voltage() or None
+        if (max_cell_voltage is None or min_cell_voltage is None or
+                self.soc is None or self.voltage is None):
+            self.control_charge_current = 1
+            self.control_discharge_current = 1
             self.control_allow_charge = False
-        else:
-            self.control_allow_charge = True
-        # Change depending on the SOC values
-        if 98 < self.soc <= 100:
-            self.control_charge_current = 5
-        elif 95 < self.soc <= 97:
-            self.control_charge_current = self.max_battery_current/4
-        elif 91 < self.soc <= 95:
-            self.control_charge_current = self.max_battery_current/2
-        else:
-            self.control_charge_current = self.max_battery_current
+            self.control_allow_discharge = False
+            logger.warning('Invalid battery state, disabling charging.')
+            return
+        # our input data
+        logger.info('SoC %d, Cells %.3fV-%.3fV, Pack %.2fV' % (
+            self.soc, min_cell_voltage, max_cell_voltage, self.voltage))
+
+        cell_limiter = self.max_battery_voltage_warning / self.cell_count
+        cell_limiter_hi = self.max_battery_voltage / self.cell_count
+        cell_limiter_lo_warn = self.min_battery_voltage_warning / self.cell_count
+        cell_limiter_lo = self.min_battery_voltage / self.cell_count
+
+        limits = dict(
+            cell = self.linear(
+                max_cell_voltage, cell_limiter, cell_limiter_hi),
+            pack = self.linear(
+                self.voltage, self.max_battery_voltage_warning,
+                self.max_battery_voltage),
+            soc = self.linear(self.soc, 95, 100)
+        )
+        for k, v in limits.items():
+            limits[k] = int(v * self.max_battery_current)
+
+        self.control_charge_current = min(limits['cell'], max(
+            limits['pack'], limits['soc']))
+        logger.info('Max Charge Current: Cell %dA, Pack %dA, SoC %dA -> %dA' % (
+            limits['cell'], limits['pack'], limits['soc'],
+            self.control_charge_current))
+
+        limits = dict(
+            cell = self.linear(
+                -1*min_cell_voltage,
+                -1*cell_limiter_lo_warn,
+                -1*cell_limiter_lo),
+            pack = self.linear(
+                -1*self.voltage,
+                -1*self.min_battery_voltage_warning,
+                -1*self.min_battery_voltage),
+            soc = self.linear(-1*self.soc, -10, -20)
+        )
+        for k, v in limits.items():
+            limits[k] = int(v * self.max_battery_discharge_current)
+
+        self.control_discharge_current = min(limits['cell'], max(
+            limits['pack'], limits['soc']))
+        logger.info('Max Discharge Current: Cell %dA, Pack %dA, SoC %dA -> %dA' % (
+            limits['cell'], limits['pack'], limits['soc'],
+            self.control_discharge_current))
 
         # Change depending on the SOC values
-        if self.soc <= 20:
-            self.control_discharge_current = 5
-        elif 20 < self.soc <= 30:
-            self.control_discharge_current = self.max_battery_discharge_current/4
-        elif 30 < self.soc <= 35:
-            self.control_discharge_current = self.max_battery_discharge_current/2
-        else:
-            self.control_discharge_current = self.max_battery_discharge_current
+        self.control_allow_charge = max_cell_voltage < cell_limiter_hi
+        self.control_allow_discharge = min_cell_voltage > cell_limiter_lo
+           
 
     def get_min_cell(self):
         min_voltage = 9999

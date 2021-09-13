@@ -33,6 +33,8 @@ class Jkbms(Battery):
         self.max_battery_discharge_current = MAX_BATTERY_DISCHARGE_CURRENT
         self.max_battery_voltage = MAX_CELL_VOLTAGE * self.cell_count
         self.min_battery_voltage = MIN_CELL_VOLTAGE * self.cell_count
+        self.max_battery_voltage_warning = MAX_CELL_VOLTAGE_WARNING * self.cell_count
+        self.min_battery_voltage_warning = MIN_CELL_VOLTAGE_WARNING * self.cell_count
 
         # init the cell array
         while len(self.cells) < self.cell_count:
@@ -158,7 +160,7 @@ class Jkbms(Battery):
         self.production = self._internal['production']
         self.version = self._internal['version']
 
-        logger.info('%.2fV %.1f%% P%s T%d %d %d' % (self.voltage, self.soc, protection, temp0, temp1, temp2))
+        logger.info('%.2fV %.1f%% P%s T%.2f %.2f %.2f' % (self.voltage, self.soc, protection, temp0, temp1, temp2))
         return True
        
     def to_fet_bits(self, byte_data):

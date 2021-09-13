@@ -72,7 +72,10 @@ class DbusHelper:
         self._dbusservice.add_path('/Connected', 1)
         # Create static battery info
         self._dbusservice.add_path('/Info/BatteryLowVoltage', self.battery.min_battery_voltage, writeable=True)
+        self._dbusservice.add_path('/Info/BatteryLowVoltageWarning', self.battery.min_battery_voltage_warning, writeable=True)
         self._dbusservice.add_path('/Info/MaxChargeVoltage', self.battery.max_battery_voltage, writeable=True,
+                                   gettextcallback=lambda p, v: "{:0.2f}V".format(v))
+        self._dbusservice.add_path('/Info/MaxChargeVoltageWarning', self.battery.max_battery_voltage_warning, writeable=True,
                                    gettextcallback=lambda p, v: "{:0.2f}V".format(v))
         self._dbusservice.add_path('/Info/MaxChargeCurrent', self.battery.max_battery_current, writeable=True,
                                    gettextcallback=lambda p, v: "{:0.2f}A".format(v))
@@ -166,7 +169,7 @@ class DbusHelper:
         self._dbusservice['/History/TotalAhDrawn'] = self.battery.total_ah_drawn
         self._dbusservice['/Io/AllowToCharge'] = 1 if self.battery.charge_fet \
                                 and self.battery.control_allow_charge else 0
-        self._dbusservice['/Io/AllowToDischarge'] = 1 if self.battery.discharge_fet else 0
+        self._dbusservice['/Io/AllowToDischarge'] = 1 if self.battery.discharge_fet and self.battery.control_allow_discharge else 0
         self._dbusservice['/System/NrOfModulesBlockingCharge'] = 0 if self.battery.charge_fet is None or \
                                 (self.battery.charge_fet and self.battery.control_allow_charge) else 1
         self._dbusservice['/System/NrOfModulesBlockingDischarge'] = 0 if self.battery.discharge_fet is None \

@@ -15,11 +15,13 @@ DRIVER_SUBVERSION = 'j'
 zero_char = chr(48)
 degree_sign = u'\N{DEGREE SIGN}'
 # Cell min/max voltages - used with the cell count to get the min/max battery voltage
-MIN_CELL_VOLTAGE = 3.1
-MAX_CELL_VOLTAGE = 3.45
-# battery Current limits
+MIN_CELL_VOLTAGE = 3.00
+MIN_CELL_VOLTAGE_WARNING = 3.10
+MAX_CELL_VOLTAGE_WARNING = 3.45
+MAX_CELL_VOLTAGE = 3.55
+# battery current limits
 MAX_BATTERY_CURRENT = 35.0
-MAX_BATTERY_DISCHARGE_CURRENT = 45.0
+MAX_BATTERY_DISCHARGE_CURRENT = 50.0
 
 def is_bit_set(tmp):
     return False if tmp == zero_char else True
