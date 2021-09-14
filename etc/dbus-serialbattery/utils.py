@@ -17,7 +17,7 @@ degree_sign = u'\N{DEGREE SIGN}'
 # Cell min/max voltages - used with the cell count to get the min/max battery voltage
 MIN_CELL_VOLTAGE = 3.00
 MIN_CELL_VOLTAGE_WARNING = 3.10
-MAX_CELL_VOLTAGE_WARNING = 3.45
+MAX_CELL_VOLTAGE_WARNING = 3.41
 MAX_CELL_VOLTAGE = 3.55
 # battery current limits
 MAX_BATTERY_CURRENT = 35.0

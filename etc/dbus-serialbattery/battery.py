@@ -139,14 +139,15 @@ class Battery(object):
             pack = self.linear(
                 self.voltage, self.max_battery_voltage_warning,
                 self.max_battery_voltage),
-            soc = self.linear(self.soc, 95, 100)
+            soc = self.linear(self.soc, 95.0, 100.0)
         )
         for k, v in limits.items():
-            limits[k] = int(v * self.max_battery_current)
+            limits[k] = v * self.max_battery_current
 
-        self.control_charge_current = min(limits['cell'], max(
-            limits['pack'], limits['soc']))
-        logger.info('Max Charge Current: Cell %dA, Pack %dA, SoC %dA -> %dA' % (
+        old_charge_current = self.control_charge_current or 0.0
+        self.control_charge_current = (min(limits['cell'], max(
+            limits['pack'], limits['soc'])) + 9*old_charge_current)/10.0
+        logger.info('Max Charge Current: Cell %dA, Pack %dA, SoC %dA -> %.1fA' % (
             limits['cell'], limits['pack'], limits['soc'],
             self.control_charge_current))
 
@@ -159,14 +160,15 @@ class Battery(object):
                 -1*self.voltage,
                 -1*self.min_battery_voltage_warning,
                 -1*self.min_battery_voltage),
-            soc = self.linear(-1*self.soc, -10, -20)
+            soc = self.linear(-1*self.soc, -10.0, -20.0)
         )
         for k, v in limits.items():
-            limits[k] = int(v * self.max_battery_discharge_current)
+            limits[k] = v * self.max_battery_discharge_current
 
-        self.control_discharge_current = min(limits['cell'], max(
-            limits['pack'], limits['soc']))
-        logger.info('Max Discharge Current: Cell %dA, Pack %dA, SoC %dA -> %dA' % (
+        old_discharge_current = self.control_discharge_current or 0.0
+        self.control_discharge_current = (min(limits['cell'], max(
+            limits['pack'], limits['soc'])) + 9*old_discharge_current)/10.0
+        logger.info('Max Discharge Current: Cell %dA, Pack %dA, SoC %dA -> %.1fA' % (
             limits['cell'], limits['pack'], limits['soc'],
             self.control_discharge_current))
 
