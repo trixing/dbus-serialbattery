@@ -147,8 +147,10 @@ class Battery(object):
         old_charge_current = self.control_charge_current or 0.0
         self.control_charge_current = (min(limits['cell'], max(
             limits['pack'], limits['soc'])) + 9*old_charge_current)/10.0
-        logger.info('Max Charge Current: Cell %dA, Pack %dA, SoC %dA -> %.1fA' % (
+        self.control_allow_charge = max_cell_voltage < (cell_limiter_hi + 0.05)
+        logger.info('Max Charge Current: Cell %dA, Pack %dA, SoC %dA -> %d %.1fA' % (
             limits['cell'], limits['pack'], limits['soc'],
+            self.control_allow_charge,
             self.control_charge_current))
 
         limits = dict(
@@ -168,13 +170,15 @@ class Battery(object):
         old_discharge_current = self.control_discharge_current or 0.0
         self.control_discharge_current = (min(limits['cell'], max(
             limits['pack'], limits['soc'])) + 9*old_discharge_current)/10.0
-        logger.info('Max Discharge Current: Cell %dA, Pack %dA, SoC %dA -> %.1fA' % (
-            limits['cell'], limits['pack'], limits['soc'],
-            self.control_discharge_current))
 
-        # Change depending on the SOC values
-        self.control_allow_charge = max_cell_voltage < cell_limiter_hi
-        self.control_allow_discharge = min_cell_voltage > cell_limiter_lo
+        # Temporary measure to wait for balancing
+        self.control_allow_discharge = min_cell_voltage > (cell_limiter_lo - 0.05)
+        # self.control_discharge_current = 0
+
+        logger.info('Max Discharge Current: Cell %dA, Pack %dA, SoC %dA -> %d %.1fA' % (
+            limits['cell'], limits['pack'], limits['soc'],
+            self.control_allow_discharge,
+            self.control_discharge_current))
            
 
     def get_min_cell(self):

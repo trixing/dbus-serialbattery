@@ -84,6 +84,13 @@ class Jkbms(Battery):
         current = unpack_from('>H', self.get_data(status_data, b'\x84', 2))[0]
         self.current = current / -100 if current < self.CURRENT_ZERO_CONSTANT else (current - self.CURRENT_ZERO_CONSTANT) / 100
 
+        # Correct for slightly different voltage of Cell 9 (zero indexed)
+        # due to different connection style
+        # Charging 0.015V at 35A
+        # or Discharging 50A, -0.02V
+        if len(self.cells)>8 and self.cells[8].voltage:
+            self.cells[8].voltage -= self.current * 0.015 / 35.0
+
         self.soc =  unpack_from('>B', self.get_data(status_data, b'\x85', 1))[0] 
         if self.soc > 100:
             logger.error('Invalid soc: %r' % [status_data])
@@ -162,8 +169,8 @@ class Jkbms(Battery):
 
         max_cell_voltage = self.get_max_cell_voltage() or 0.0
         min_cell_voltage = self.get_min_cell_voltage() or 0.0
-        logger.info('%.2fV (%.3f-%.3f), %.1f%%, P%s, T%d %d %d' % (
-            self.voltage,min_cell_voltage, max_cell_voltage,
+        logger.info('%.2fV (%.3f-%.3f), %.1fA, %.1f%%, P%s, T%d %d %d' % (
+            self.voltage, min_cell_voltage, max_cell_voltage, self.current,
             self.soc, protection, temp0, temp1, temp2,
             ))
         return True
@@ -204,6 +211,7 @@ class Jkbms(Battery):
                 start_data = self._serial.read(11)
                 if len(start_data) < 11:
                     logger.error('Did not receive enough header data')
+                    self._serial.close()
                     return False
                 start, length, terminal, cmd, crc, tt = unpack_from('>HHLBBB', start_data)
                 # Do checks

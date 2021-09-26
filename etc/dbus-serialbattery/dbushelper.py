@@ -77,9 +77,9 @@ class DbusHelper:
                                    gettextcallback=lambda p, v: "{:0.2f}V".format(v))
         self._dbusservice.add_path('/Info/MaxChargeVoltageWarning', self.battery.max_battery_voltage_warning, writeable=True,
                                    gettextcallback=lambda p, v: "{:0.2f}V".format(v))
-        self._dbusservice.add_path('/Info/MaxChargeCurrent', round(self.battery.max_battery_current), writeable=True,
+        self._dbusservice.add_path('/Info/MaxChargeCurrent', 0.0, writeable=True,
                                    gettextcallback=lambda p, v: "{:0.2f}A".format(v))
-        self._dbusservice.add_path('/Info/MaxDischargeCurrent', round(self.battery.max_battery_discharge_current),
+        self._dbusservice.add_path('/Info/MaxDischargeCurrent', 0.0,
                                    writeable=True, gettextcallback=lambda p, v: "{:0.2f}A".format(v))
         self._dbusservice.add_path('/System/NrOfCellsPerBattery', self.battery.cell_count, writeable=True)
         self._dbusservice.add_path('/System/NrOfModulesOnline', 1, writeable=True)
@@ -178,8 +178,8 @@ class DbusHelper:
         self._dbusservice['/System/MaxCellTemperature'] = self.battery.get_max_temp()
 
         # Charge control
-        pub('/Info/MaxChargeCurrent', self.battery.control_charge_current)
-        pub('/Info/MaxDischargeCurrent', self.battery.control_discharge_current)
+        pub('/Info/MaxChargeCurrent', round(self.battery.control_charge_current, 1))
+        pub('/Info/MaxDischargeCurrent', round(self.battery.control_discharge_current, 1))
 
         # Updates from cells
         pub('/System/MinVoltageCellId', self.battery.get_min_cell_desc())
