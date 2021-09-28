@@ -118,8 +118,8 @@ class Battery(object):
         min_cell_voltage = self.get_min_cell_voltage() or None
         if (max_cell_voltage is None or min_cell_voltage is None or
                 self.soc is None or self.voltage is None):
-            self.control_charge_current = 1
-            self.control_discharge_current = 1
+            self.control_charge_current = 0
+            self.control_discharge_current = 0
             self.control_allow_charge = False
             self.control_allow_discharge = False
             logger.warning('Invalid battery state, disabling charging.')
@@ -171,8 +171,8 @@ class Battery(object):
         self.control_discharge_current = (min(limits['cell'], max(
             limits['pack'], limits['soc'])) + 9*old_discharge_current)/10.0
 
-        # Temporary measure to wait for balancing
         self.control_allow_discharge = min_cell_voltage > (cell_limiter_lo - 0.05)
+        # Temporary measure to wait for balancing
         # self.control_discharge_current = 0
 
         logger.info('Max Discharge Current: Cell %dA, Pack %dA, SoC %dA -> %d %.1fA' % (
