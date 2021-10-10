@@ -23,6 +23,7 @@ MAX_CELL_VOLTAGE = 3.51
 MAX_BATTERY_CURRENT = 35.0
 MAX_BATTERY_DISCHARGE_CURRENT = 50.0
 
+
 def cc_t_curve(charge_current, temp):
     if temp >= 10:
         return charge_current

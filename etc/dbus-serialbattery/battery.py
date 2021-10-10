@@ -112,7 +112,7 @@ class Battery(object):
 
     def manage_charge_current(self):
 
-
+        temp = self.get_min_temp()
         # Start with the current values
         max_cell_voltage = self.get_max_cell_voltage() or None
         min_cell_voltage = self.get_min_cell_voltage() or None
@@ -142,7 +142,7 @@ class Battery(object):
             soc = self.linear(self.soc, 95.0, 100.0)
         )
         for k, v in limits.items():
-            limits[k] = v * self.max_battery_current
+            limits[k] = utils.cc_t_curve(v * self.max_battery_current, temp)
 
         old_charge_current = self.control_charge_current or 0.0
         self.control_charge_current = (min(limits['cell'], max(
@@ -165,7 +165,7 @@ class Battery(object):
             soc = self.linear(-1*self.soc, -10.0, -20.0)
         )
         for k, v in limits.items():
-            limits[k] = v * self.max_battery_discharge_current
+            limits[k] = utils.dc_t_curve(v * self.max_battery_discharge_current, temp)
 
         old_discharge_current = self.control_discharge_current or 0.0
         self.control_discharge_current = (min(limits['cell'], max(
