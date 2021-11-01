@@ -88,8 +88,10 @@ class Jkbms(Battery):
         # due to different connection style
         # Charging 0.015V at 35A
         # or Discharging 50A, -0.02V
-        if len(self.cells)>8 and self.cells[8].voltage:
-            self.cells[8].voltage -= self.current * 0.015 / 35.0
+        # Update 2021-11-01: Not needed anymore, replaced busbar
+        #
+        # if len(self.cells)>8 and self.cells[8].voltage:
+        #     self.cells[8].voltage -= self.current * 0.015 / 35.0
 
         self.soc =  unpack_from('>B', self.get_data(status_data, b'\x85', 1))[0] 
         if self.soc > 100:
