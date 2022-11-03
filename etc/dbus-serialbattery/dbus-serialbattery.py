@@ -6,7 +6,10 @@ from time import sleep
 from dbus.mainloop.glib import DBusGMainLoop
 from threading import Thread
 import dbus
-import gobject
+try:
+  import gobject
+except ImportError:
+  from gi.repository import GLib as gobject
 import logging
 import sys
 
