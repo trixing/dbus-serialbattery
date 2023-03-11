@@ -74,9 +74,10 @@ class Jkbms(Battery):
         temp0 =  unpack_from('>H', self.get_data(status_data, b'\x80', 2))[0] 
         temp1 =  unpack_from('>H', self.get_data(status_data, b'\x81', 2))[0] 
         temp2 =  unpack_from('>H', self.get_data(status_data, b'\x82', 2))[0] 
-        self.to_temp(0, temp0 if temp0 <= 100 else 100 - temp0)
-        self.to_temp(1, temp1 if temp1 <= 100 else 100 - temp1)
-        self.to_temp(2, temp2 if temp2 <= 100 else 100 - temp2)
+        logger.info('Raw Temp T%d %d %d' % (temp0, temp1, temp2))
+        self.to_temp(0, temp0 if temp0 < 100 else 100 - temp0)
+        self.to_temp(1, temp1 if temp1 < 100 else 100 - temp1)
+        self.to_temp(2, temp2 if temp2 < 100 else 100 - temp2)
         
         voltage = unpack_from('>H', self.get_data(status_data, b'\x83', 2))[0]
         self.voltage = voltage / 100
@@ -171,9 +172,9 @@ class Jkbms(Battery):
 
         max_cell_voltage = self.get_max_cell_voltage() or 0.0
         min_cell_voltage = self.get_min_cell_voltage() or 0.0
-        logger.info('%.2fV (%.3f-%.3f), %.1fA, %.1f%%, P%s, T%d %d %d' % (
+        logger.info('%.2fV (%.3f-%.3f), %.1fA, %.1f%%, P%s, T(I:%d 1:%d 2:%d)' % (
             self.voltage, min_cell_voltage, max_cell_voltage, self.current,
-            self.soc, protection, temp0, temp1, temp2,
+            self.soc, protection, self.temp_internal, self.temp1, self.temp2,
             ))
         return True
        

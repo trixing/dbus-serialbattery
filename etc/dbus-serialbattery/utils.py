@@ -15,29 +15,32 @@ DRIVER_SUBVERSION = 'j'
 zero_char = chr(48)
 degree_sign = u'\N{DEGREE SIGN}'
 # Cell min/max voltages - used with the cell count to get the min/max battery voltage
-MIN_CELL_VOLTAGE = 3.00
-MIN_CELL_VOLTAGE_WARNING = 3.10
-MAX_CELL_VOLTAGE_WARNING = 3.41
-MAX_CELL_VOLTAGE = 3.45
+MIN_CELL_VOLTAGE = 2.90
+MIN_CELL_VOLTAGE_WARNING = 3.00
+MAX_CELL_VOLTAGE_WARNING = 3.42
+MAX_CELL_VOLTAGE = 3.50
 # battery current limits
-MAX_BATTERY_CURRENT = 35.0
-MAX_BATTERY_DISCHARGE_CURRENT = 50.0
+MAX_BATTERY_CURRENT = 80.0
+MAX_BATTERY_DISCHARGE_CURRENT = 80.0
 
+
+TEMP_WARN = 8
+TEMP_CUTOFF = 4
 
 def cc_t_curve(charge_current, temp):
-    if temp >= 10:
+    if temp >= TEMP_WARN:
         return charge_current
-    if temp <= 5:
+    if temp <= TEMP_CUTOFF:
         return 0
-    return charge_current * (temp - 5) / (10 - 5)
+    return charge_current * (temp - TEMP_CUTOFF) / (TEMP_WARN - TEMP_CUTOFF)
 
 
 def dc_t_curve(discharge_current, temp):
-    if temp >= 10:
+    if temp >= TEMP_WARN:
         return discharge_current
-    if temp <= 5:
+    if temp <= TEMP_CUTOFF:
         return 0
-    return discharge_current * (temp - 5) / (10 - 5)
+    return discharge_current * (temp - TEMP_CUTOFF) / (TEMP_WARN - TEMP_CUTOFF)
 
 
 def is_bit_set(tmp):
