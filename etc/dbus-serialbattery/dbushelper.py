@@ -178,6 +178,8 @@ class DbusHelper:
         self._dbusservice['/System/MaxCellTemperature'] = self.battery.get_max_temp()
 
         # Charge control
+        if self.battery.control_voltage is not None:
+            pub('/Info/MaxChargeVoltage', round(self.battery.control_voltage, 2))
         pub('/Info/MaxChargeCurrent', round(self.battery.control_charge_current, 1))
         pub('/Info/MaxDischargeCurrent', round(self.battery.control_discharge_current, 1))
 

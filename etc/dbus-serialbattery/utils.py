@@ -15,10 +15,12 @@ DRIVER_SUBVERSION = 'j'
 zero_char = chr(48)
 degree_sign = u'\N{DEGREE SIGN}'
 # Cell min/max voltages - used with the cell count to get the min/max battery voltage
-MIN_CELL_VOLTAGE = 2.90
-MIN_CELL_VOLTAGE_WARNING = 3.00
-MAX_CELL_VOLTAGE_WARNING = 3.42
-MAX_CELL_VOLTAGE = 3.50
+MIN_CELL_VOLTAGE = 3.05
+MIN_CELL_VOLTAGE_WARNING = 3.20
+# 3.45 is too low to trigger SoC reset on JKBMS
+# 3.30 to force discharge
+MAX_CELL_VOLTAGE_WARNING = 3.45 # Was 3.41
+MAX_CELL_VOLTAGE = 3.55 # Was 3.51
 # battery current limits
 MAX_BATTERY_CURRENT = 80.0
 MAX_BATTERY_DISCHARGE_CURRENT = 80.0
