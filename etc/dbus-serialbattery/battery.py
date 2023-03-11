@@ -179,6 +179,16 @@ class Battery(object):
             limits['cell'], limits['pack'], limits['soc'],
             self.control_allow_discharge,
             self.control_discharge_current))
+
+        voltage_cell_headroom = max(0, cell_limiter_hi - max_cell_voltage) * 0.9
+        max_voltage = round(self.voltage + voltage_cell_headroom, 2)
+        self.control_voltage = max_voltage
+        logger.info('Max Voltage: Cell %.3f, Limit %.3f, Pack %.2f -> %.2fV',
+                    max_cell_voltage,
+                    cell_limiter_hi,
+                    self.voltage,
+                    max_voltage)
+                    
            
 
     def get_min_cell(self):
