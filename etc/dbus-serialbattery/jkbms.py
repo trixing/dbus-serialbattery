@@ -166,6 +166,7 @@ class Jkbms(Battery):
         )
         self.balancing = self._internal['balancing']
         self.capacity = self._internal['capacity']
+        self.capacity_remain = round(self.capacity * self.soc / 100, 1)
         self.production = self._internal['production']
         self.version = self._internal['version']
 
