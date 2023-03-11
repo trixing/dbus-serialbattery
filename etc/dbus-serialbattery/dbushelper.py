@@ -199,7 +199,8 @@ class DbusHelper:
         # Update the alarms
         pub('/Alarms/LowVoltage', self.battery.protection.voltage_low)
         pub('/Alarms/LowCellVoltage', self.battery.protection.voltage_cell_low)
-        pub('/Alarms/HighVoltage', self.battery.protection.voltage_high)
+	# jdi: Disabled for now, providing errant alarms
+        # pub('/Alarms/HighVoltage', self.battery.protection.voltage_high)
         pub('/Alarms/LowSoc', self.battery.protection.soc_low)
         pub('/Alarms/HighChargeCurrent', self.battery.protection.current_over)
         pub('/Alarms/HighDischargeCurrent', self.battery.protection.current_under)
